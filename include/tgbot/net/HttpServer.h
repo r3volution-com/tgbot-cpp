@@ -131,16 +131,24 @@ protected:
                 std::string answer;
                 try {
                     answer = self->_handler(dataAsString, *headers);
+                    boost::asio::async_write(
+                            self->_socket,
+                            boost::asio::buffer(answer),
+                            [](const boost::system::error_code& e, std::size_t n) { });
+
+                    self->_socket.close();
                 } catch (std::exception& e) {
                     std::cout << "error in HttpServer::Connection#_readBody answer: " << e.what() << std::endl;
                     answer = self->_httpParser.generateResponse("Internal server error", "text/plain", 500, "Internal server error", false);
-                }
-                boost::asio::async_write(
-                        self->_socket,
-                        boost::asio::buffer(answer),
-                        [](const boost::system::error_code& e, std::size_t n) { });
+                    boost::asio::async_write(
+                            self->_socket,
+                            boost::asio::buffer(answer),
+                            [](const boost::system::error_code& e, std::size_t n) { });
 
-                self->_socket.close();
+                    self->_socket.close();
+
+                    throw TgException(e.what());
+                }
             });
         }
     };
